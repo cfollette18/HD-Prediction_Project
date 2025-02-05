@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Disease Prediction</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .result h2 {
+            margin: 0;
+            color: #333;
+        }
+        #shap-plot {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Heart Disease Prediction</h1>
+        <form id="prediction-form">
+            <div class="input-group">
+                <label for="age">Age</label>
+                <input type="number" id="age" name="age" required>
+            </div>
+            <div class="input-group">
+                <label for="thalach">Maximum Heart Rate (thalach)</label>
+                <input type="number" id="thalach" name="thalach" required>
+            </div>
+            <div class="input-group">
+                <label for="oldpeak">ST Depression (oldpeak)</label>
+                <input type="number" id="oldpeak" name="oldpeak" step="0.1" required>
+            </div>
+            <!-- Add more input fields for other features if needed -->
+            <button type="submit">Predict</button>
+        </form>
+
+        <div class="result">
+            <h2>Prediction: <span id="prediction-result">-</span></h2>
+            <div id="shap-plot"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('prediction-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Get input data
+            const formData = new FormData(e.target);
+            const inputData = Object.fromEntries(formData.entries());
+
+            // Convert input data to numbers
+            for (const key in inputData) {
+                inputData[key] = parseFloat(inputData[key]);
+            }
+
+            // Send data to the backend
+            try {
+                const response = await fetch('http://127.0.0.1:5000/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(inputData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                // Display prediction
+                document.getElementById('prediction-result').textContent = 
+                    result.prediction === 1 ? 'High Risk' : 'Low Risk';
+
+                // Plot SHAP values
+                const shapData = [{
+                    type: 'bar',
+                    x: result.shap_values,
+                    y: result.feature_names,
+                    orientation: 'h'
+                }];
+                const layout = { title: 'SHAP Values', xaxis: { title: 'SHAP Value' } };
+                Plotly.newPlot('shap-plot', shapData, layout);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while making the prediction.');
+            }
+        });
+    </script>
+</body>
+</html>
